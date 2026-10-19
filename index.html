@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desi Radio Hub Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Hls.js Stable Library Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <!-- PWA Web Manifest Configuration -->
+    <link rel="manifest" href='data:application/json,{"name":"Desi Radio Hub Pro","short_name":"DesiRadio","description":"All India Radio Fallback Grid Engine","start_url":".","display":"standalone","background_color":"#020617","theme_color":"#10b981","orientation":"portrait","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>","sizes":"512x512","type":"image/svg+xml"}]}' />
+    
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .station-card.active-card {
+            border-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.08) !important;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none pb-24">
+
+    <!-- Navbar Layout Header -->
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="text-3xl">📻</div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-emerald-400 flex items-center gap-2">
+                        Desi Radio Hub <span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono uppercase">V2.0</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">All India Radio Fallback Grid Engine</p>
+                </div>
+            </div>
+
+            <!-- Search Inputs Bar -->
+            <div class="relative w-full sm:w-72 md:w-80">
+                <input type="text" id="globalSearch" placeholder="Search by name, tag..." 
+                       class="w-full bg-slate-950/80 border border-slate-700 rounded-lg pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-emerald-500 text-slate-200 transition-colors">
+                <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Content Workspace -->
+    <main class="flex-1 max-w-6xl w-full mx-auto p-4 flex flex-col gap-4">
+        
+        <!-- Filter Tabs Wrapper -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar" id="tabFilterLayout">
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-emerald-600 text-white shadow-md" data-target="all">All Stations</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-rose-400 hover:bg-slate-700" data-target="favorites">❤️ Favorites</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200" data-target="Akashvani">Akashvani</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200" data-target="Marathi">Marathi</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200" data-target="Bollywood">Bollywood</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200" data-target="Retro">Retro</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200" data-target="90's">90's</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200" data-target="00's">00's</button>
+            <button class="filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200" data-target="Modern">Modern</button>
+        </div>
+
+        <!-- Dynamic Content Response Area Grid -->
+        <div id="cardsLayoutGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <!-- Render cards via js layout -->
+        </div>
+    </main>
+
+    <!-- Universal Sticky Bottom Control Dock -->
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-900/90 border-t border-slate-800/80 shadow-2xl px-4 py-3 z-50 backdrop-blur-lg">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div id="playingWaveIcon" class="w-10 h-10 bg-slate-950 border border-slate-800 rounded-lg flex items-center justify-center text-lg text-slate-400">⚡</div>
+                <div class="overflow-hidden max-w-[280px]">
+                    <h4 id="footerTitle" class="font-bold text-sm text-slate-200 truncate">No Active Station</h4>
+                    <p id="footerSubtitle" class="text-xs text-slate-400 truncate mt-0.5">Select a station play button</p>
+                </div>
+            </div>
+
+            <!-- Custom Clean Control Bar without Timeline -->
+            <div class="flex items-center gap-4 w-full sm:w-auto">
+                <button id="bottomPlayPauseBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-1.5 rounded-lg transition-colors shadow-md">
+                    ▶ Play
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-400">🔊</span>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" class="w-24 sm:w-32 accent-emerald-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Native Audio Node Container Interface -->
+    <audio id="audioStreamingEngine" class="hidden"></audio>
+
+    <!-- Core Interactive Client Logic JS -->
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW failed'));
+        }
+
+        const radioDatabase = [{"name": "BigFM 106.2", "link": "https://listen.openstream.co/6983/audio", "tags": ["Bollywood", "Hindi", "90's", "00's", "Modern"]}, {"name": "Radio Mirchi", "link": "https://eu8.fastcast4u.com/proxy/clyedupq?mp=%2F1", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Mirchi Love", "link": "https://bhs.edge.mystreaming.net/uber/lrbollywood/icecast.audio", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Bolly 102.9 FM", "link": "https://ice6.securenetsystems.net/INTRADIO?type=.mp3", "tags": ["Hindi", "Bollywood", "Modern", "90's"]}, {"name": "Filmy Mirchi", "link": "https://streaming.webhostnepal.com/8020/stream", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Mirchi Top 20", "link": "https://bhs.edge.mystreaming.net/uber/bollywoodnow/icecast.audio", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Mirchi Pune", "link": "https://stream.zeno.fm/wgaznsmt92quv", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Mirchi 90's Radio", "link": "https://stream.zeno.fm/fdgs82xkzhhvv", "tags": ["Hindi", "Bollywood", "90's"]}, {"name": "Kadak FM", "link": "https://admn-radio-cdn-lb.starzplayarabia.com/out/v1/admn_radio_enc/kadak/kadak_hls_nd/index_kadakfm_audio_enc_ara.m3u8", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Radio Olive", "link": "https://playerservices.streamtheworld.com/api/livestream-redirect/OLIVE1063.mp3", "tags": ["Hindi", "Bollywood", "Modern", "00's"]}, {"name": "Radio Olive Retro", "link": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_OLIVE_RETRO_S03_SC", "tags": ["Hindi", "Bollywood", "Retro"]}, {"name": "Radio Olive Kids", "link": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_OLIVE_CLUB_S04AAC.aac", "tags": ["Bollywood", "Hindi", "Modern"]}, {"name": "BollyVibes Radio", "link": "https://bollyvibes.radioca.st/stream", "tags": ["Bollywood", "Hindi", "00's", "Modern"]}, {"name": "Diverse FM", "link": "https://carol.epichosts.co.uk:8570/;", "tags": ["Bollywood", "Hindi", "00's", "Modern"]}, {"name": "Mirchi FM", "link": "https://listen.openstream.co/4603/audio", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Radio Badal", "link": "https://listen.openstream.co/6654/;stream.mp3", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Radio Namkin", "link": "https://stream.zeno.fm/yg1qhsbaqv5tv", "tags": ["Hindi", "Bollywood", "Retro", "90's"]}, {"name": "Hindi Retro", "link": "https://stream.zeno.fm/v2zfmxef798uv", "tags": ["Hindi", "Bollywood", "Retro"]}, {"name": "Radio Dil Se", "link": "https://stream.zeno.fm/143d7gty24zuv", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Bombay Beats India Radio", "link": "https://strm112.1.fm/bombaybeats_mobile_mp3", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Dance Masti", "link": "https://bhs.edge.mystreaming.net/uber-app/bollywooddance/icecast.audio", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Golden Voice Fm", "link": "https://stream.zeno.fm/s3sqemewrg0uv", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Bollywood 2010’s", "link": "https://bhs.edge.mystreaming.net/uber/bollywood2010s/icecast.audio", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Fusion Life", "link": "https://c28.radioboss.fm:18046/stream", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Bollywood Bio", "link": "https://stream.zeno.fm/kr08sxc2tfeuv", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Rhythm Radio", "link": "https://s3.radio.co/s2f19d44d0/listen", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Bollywood Gane Purane", "link": "https://stream.zeno.fm/6n6ewddtad0uv", "tags": ["Hindi", "Bollywood", "Retro"]}, {"name": "Bollywood Mix", "link": "https://bhs.edge.mystreaming.net/uber/bollywoodmix/icecast.audio", "tags": ["Bollywood", "Hindi", "00's", "Modern"]}, {"name": "Bollywood Diwali", "link": "https://bhs.edge.mystreaming.net/uber/bollywooddiwali/icecast.audio", "tags": ["Bollywood", "Hindi", "00's", "Modern"]}, {"name": "Radio Saavan", "link": "https://sp14.instainternet.com/8268/stream", "tags": ["Hindi", "Bollywood", "Retro", "90's"]}, {"name": "Radio Mirchi New Jersey", "link": "https://14833.live.streamtheworld.com/NYC_HIN_ESTAAC.aac", "tags": ["Hindi", "Bollywood", "00's", "Modern"]}, {"name": "Radio Mirchi Qatar", "link": "https://streams.radio.co/s8d06d0298/listen", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Goldy Evergreen", "link": "https://stream.zeno.fm/n2fd0edh9k8uv", "tags": ["Hindi", "Bollywood", "Retro", "90's"]}, {"name": "Radio Mirchi 98.3 FM", "link": "https://stream-284.surfernetwork.com/wgaznsmt92quv", "tags": ["Hindi", "Bollywood", "90's"]}, {"name": "92.7 Big FM online", "link": "https://stream.zeno.fm/dbstwo3dvhhtv", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Radio Hungama Bollywood Dil Se", "link": "https://stream.zeno.fm/143d7gty24zuv", "tags": ["Hindi", "Bollywood", "Modern", "00's"]}, {"name": "Radio Hungama Evergreen Bollywood", "link": "https://server.mixify.in:8010/radio.mp3", "tags": ["Hindi", "Bollywood", "Retro"]}, {"name": "Radio Hungama 90s Once Again", "link": "https://stream.zeno.fm/rm4i9pdex3cuv", "tags": ["Hindi", "Bollywood", "90's"]}, {"name": "Bolly Top 100", "link": "https://stream.zeno.fm/6hebzur8d72tv", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Mirchi Love live", "link": "https://a10.asurahosting.com:9030/radio.mp3", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Mirchi Love Hindi", "link": "https://drive.uber.radio/uber/bollywoodlove/icecast.audio", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Mirchifiji", "link": "https://icecast1.sere.plus/MirchiFiji", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Radio Badal 2", "link": "https://listen.openstream.co/6654/;stream.mp3", "tags": ["Hindi", "Bollywood", "90's"]}, {"name": "Radio Retro Bollywood 90s", "link": "https://stream.zeno.fm/u0hrd3xkzhhvv", "tags": ["Hindi", "Bollywood", "90's"]}, {"name": "Club Mirchi", "link": "https://stream-141.zeno.fm/6n6ewddtad0uv", "tags": ["Hindi", "Bollywood", "90's"]}, {"name": "Mohabbat Radio", "link": "https://stream.zeno.fm/t2ekq8zsgtzuv", "tags": ["Hindi", "Bollywood", "90's"]}, {"name": "Hindi Non Stop", "link": "http://s5.voscast.com:8216/stream", "tags": ["Hindi", "Bollywood", "Retro", "90's"]}, {"name": "Radio Gaana", "link": "https://sp14.instainternet.com/8044/stream", "tags": ["Hindi", "Bollywood", "Retro"]}, {"name": "Radio Namkin Live", "link": "https://stream-19.zeno.fm/84h7fsbaqv5tv?zs=5fWIjd5dTEWImmlwdIadqA", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Nasha", "link": "https://stream-289.surfernetwork.com/zu59ykebs2zuv", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Vividh Bharti", "link": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio001/chunklist.m3u8", "tags": ["Akashvani", "Hindi", "Marathi", "News"]}, {"name": "Bollywood 90s", "link": "https://sp14.instainternet.com:8226/stream", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "CINA Radio", "link": "https://ice8.securenetsystems.net/CINA", "tags": ["Hindi", "Bollywood", "Retro", "90's"]}, {"name": "Goldy Cool", "link": "https://stream.zeno.fm/3k1fb86tfm8uv", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Radio Rangoli", "link": "https://play.radioking.io/rangoli-radio", "tags": ["Hindi", "Bollywood", "90's", "00's"]}, {"name": "Lyca Radio - Midlands", "link": "https://listen-lycaradio.sharp-stream.com/831_lyca_radio_leicester_192_mp3", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Lyca gold 2", "link": "https://listen-lycaradio.sharp-stream.com/1458.mp3", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Lyca gold", "link": "https://listen-lycaradio.sharp-stream.com/1035.mp3", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Navatarang", "link": "https://stream.rcs.revma.com/5f56gd8a303vv", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Masala Radio Houston", "link": "https://s3.voscast.com:10201/stream.mp3", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "103.5 HUM FM", "link": "https://ice10.securenetsystems.net/HUMFM", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "VDesi Radio Atlanta", "link": "https://ice66.securenetsystems.net/WVDESI", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Rukus Avenue Radio", "link": "https://15053.live.streamtheworld.com/RUKUS_AVENUE_RADIOAAC.aac", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Radio Rangrez Texas", "link": "https://streaming.live365.com/a37825", "tags": ["Hindi", "Bollywood", "Modern", "00's"]}, {"name": "Madhur Awaz", "link": "https://stream.madhurawaz.com/", "tags": ["Hindi", "Bollywood", "Retro"]}, {"name": "Radio Sangeet Houston", "link": "https://ice8.securenetsystems.net/SGTRADIO", "tags": ["Hindi", "Bollywood", "Modern"]}, {"name": "Intense 102.9 FM Reston", "link": "https://ice6.securenetsystems.net/INTRADIO", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Nyra Durham", "link": "https://streams.radio.co/s8d06d0298/listen", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Zindagi 540 AM Islip", "link": "https://us9.maindigitalstream.com/stream/rznynjct", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Zindagi 1550 AM San Francisco", "link": "https://us9.maindigitalstream.com/ssl/RadioZindagi", "tags": ["Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Nagar", "link": "https://centova87.shoutcastservices.com/proxy/nagar90/stream", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Karmaveer 88.4 FM", "link": "https://a4.asurahosting.com:6670/radio.mp3", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Nagpur live", "link": "https://a6.asurahosting.com:8360/radio.mp3", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "MGM Chh. Sambhajinagar", "link": "https://streamasiacdn.atc-labs.com/mgmradio.aac", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Akola FM", "link": "https://stream-179.surfernetwork.com/ewyiefmqkxkuv", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "FM Samarpan", "link": "https://stream-175.surfernetwork.com/iz7xg9sjx7suv", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Marathi Bhavgite", "link": "https://stream.zeno.fm/a22rz9brfa0uv", "tags": ["Marathi"]}, {"name": "Ratnagiri Fresh", "link": "https://stream.zeno.fm/at16xeuwea0uv", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Londoncha Mavala", "link": "https://stream.zeno.fm/kh8cywsrsfhvv", "tags": ["Marathi"]}, {"name": "Mayboli Marathi", "link": "https://stream.zenolive.com/463d8uzrwfeuv.aac", "tags": ["Marathi"]}, {"name": "Marathi Tarang", "link": "https://silverstream.radioca.st/;", "tags": ["Marathi"]}, {"name": "Radio Mast Marathi", "link": "https://stream.zeno.fm/8fqvoovoiwtuv", "tags": ["Marathi"]}, {"name": "Mi Marathi", "link": "https://stream.zeno.fm/887x5s857f8uv", "tags": ["Marathi"]}, {"name": "DJ Marathi", "link": "https://stream.zeno.fm/akvjqcyibd1uv", "tags": ["Marathi"]}, {"name": "Marathi Music", "link": "https://stream.zeno.fm/cv7xsbww2a0uv", "tags": ["Marathi"]}, {"name": "MARATHI BAKTIGITE", "link": "https://stream.zeno.fm/t36nr37tfa0uv", "tags": ["Marathi"]}, {"name": "Bhaktisudha", "link": "https://stream.radiojar.com/cfqyfcspcv8uv", "tags": ["Marathi"]}, {"name": "FM Jay Shiv Shambhu", "link": "https://stream.zeno.fm/kuimlkicg43tv", "tags": ["Marathi"]}, {"name": "MAZI SHALA 1", "link": "https://stream.zeno.fm/yaw77vbzra0uv", "tags": ["Marathi"]}, {"name": "VBS Panaji", "link": "https://d1tmej9eu7kw5c.cloudfront.net/146ed6ec6dea5a24/146ed6ec6dea5a24.m3u8", "tags": ["Akashvani", "Konkani", "Hindi", "Marathi", "English"]}, {"name": "AIR Mhadei, Panaji", "link": "https://d3hrxqn1tritdh.cloudfront.net/029a89eb18474dbd/029a89eb18474dbd.m3u8", "tags": ["Akashvani", "Konkani", "Hindi", "Marathi", "English"]}, {"name": "Radio Parbhani", "link": "https://stream.tamilfmradios.com/?url=http://85.25.185.202:8074/stream", "tags": ["Marathi", "Hindi"]}, {"name": "Radio Nagar 90.4 FM", "link": "https://centova87.shoutcastservices.com/proxy/nagar90/stream", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Radio Parijat", "link": "https://stream.zeno.fm/rxq8uv39c8zuv", "tags": ["Marathi", "Hindi", "Bollywood", "Retro", "90's", "00's", "Modern"]}, {"name": "Mann Deshi Tarang Vahini", "link": "https://streamasiahlscdn.atc-labs.com/radiomanndeshi.m3u8", "tags": ["Marathi"]}, {"name": "Smile FM 90.8", "link": "https://stream.tamilfmradios.com/?url=http://198.245.61.103:8113/stream?type=http&nocache=2", "tags": ["Marathi"]}, {"name": "Shripad Radio", "link": "https://shripadradio.radioca.st/;", "tags": ["Marathi"]}, {"name": "MGM radio 90.8", "link": "https://dz1aqwz3bmbil.cloudfront.net/mgmradio.m3u8", "tags": ["Marathi"]}, {"name": "Radio Vishwas", "link": "https://dgnlfn5aus0c6.cloudfront.net/radiovishwas.m3u8", "tags": ["Marathi", "Akashvani"]}, {"name": "FM Rainbow Mumbai", "link": "https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudio008/hlspbaudio00832kbps.m3u8", "tags": ["Akashvani", "Marathi", "Hindi"]}, {"name": "Air Mumbai", "link": "https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudio010/hlspbaudio01064kbps.m3u8", "tags": ["Akashvani", "News", "Marathi"]}, {"name": "AIR FM gold Mumbai", "link": "https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudio007/hlspbaudio00732kbps.m3u8", "tags": ["Akashvani", "Marathi", "Hindi"]}, {"name": "Akashvani Pune", "link": "https://d1tmej9eu7kw5c.cloudfront.net/7b3a089ab67dcf3c/7b3a089ab67dcf3c.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "AIR Pune", "link": "https://d1tmej9eu7kw5c.cloudfront.net/39d650ca0476a1fe/39d650ca0476a1fe.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Nanded", "link": "https://d1cvqgmbcpg5yn.cloudfront.net/111df0bc650820de/111df0bc650820de.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Dharashiv", "link": "https://d1tmej9eu7kw5c.cloudfront.net/9292ab34adae1d38/9292ab34adae1d38.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Akola", "link": "https://d1tmej9eu7kw5c.cloudfront.net/5dd27f81c839f0f5/5dd27f81c839f0f5.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "AIR Chh. Sambhajinagar", "link": "https://d1cvqgmbcpg5yn.cloudfront.net/0aa149c510dd74a3/0aa149c510dd74a3.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Yavatmal", "link": "https://d1tmej9eu7kw5c.cloudfront.net/b8a30c8945577840/b8a30c8945577840.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Parbhani", "link": "https://d3hrxqn1tritdh.cloudfront.net/825fdd17744384f5/825fdd17744384f5.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Puneri Awaj 107.8 FM", "link": "https://icecast.bkwsu.eu/radio-awaz-pune.mp3", "tags": ["Marathi"]}, {"name": "Akashvani Nagpur", "link": "https://d1tmej9eu7kw5c.cloudfront.net/84ad8273437552d7/84ad8273437552d7.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "VBS Nagpur", "link": "https://d3hrxqn1tritdh.cloudfront.net/019f90c3d79daeb9/019f90c3d79daeb9.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Radio Indus", "link": "https://stream-18.zeno.fm/48kybvzrwfeuv?zs=uuPy82hBRHezlbF8-6rfMA", "tags": ["Marathi"]}, {"name": "Akashvani Amravati", "link": "https://d1tmej9eu7kw5c.cloudfront.net/662185c15bea296f/662185c15bea296f.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Chandrapur", "link": "https://radio.wavespb.com/live/8469b942291df38f/8469b942291df38f.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Radio Deogiri 91.2 FM", "link": "https://a7.asurahosting.com/listen/radio_deogiri/radio.mp3", "tags": ["Marathi"]}, {"name": "Akashvani Dhule", "link": "https://d1tmej9eu7kw5c.cloudfront.net/c0040b54233d76a1/c0040b54233d76a1.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Sindhudurg", "link": "https://d3hrxqn1tritdh.cloudfront.net/77aa8f10f47897a3/77aa8f10f47897a3.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "AIR Mumbai Asmita", "link": "https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudio010/hlspbaudio01032kbps.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Vividh Bharti Mumbai", "link": "https://d1tmej9eu7kw5c.cloudfront.net/146ed6ec6dea5a24/146ed6ec6dea5a24.m3u8", "tags": ["Akashvani", "Marathi", "Hindi"]}, {"name": "Akashvani Nashik", "link": "https://d1tmej9eu7kw5c.cloudfront.net/810a1db2ef684745/810a1db2ef684745.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Satara", "link": "https://radio.wavespb.com/live/6878cc031c86befd/6878cc031c86befd.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Solapur", "link": "https://d1tmej9eu7kw5c.cloudfront.net/2792d5e06dbdc800/2792d5e06dbdc800.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Jalgaon", "link": "https://d1cvqgmbcpg5yn.cloudfront.net/bd41e24a31710397/bd41e24a31710397.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Sangli", "link": "https://d1cvqgmbcpg5yn.cloudfront.net/545fd5bb6cc5929b/545fd5bb6cc5929b.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Kolhapur", "link": "https://d3hrxqn1tritdh.cloudfront.net/7f050cef66718f7a/7f050cef66718f7a.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "AIR Ahilyanagar", "link": "https://d1tmej9eu7kw5c.cloudfront.net/e52945b98fa63678/e52945b98fa63678.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Beed", "link": "https://d1tmej9eu7kw5c.cloudfront.net/3f62bdf39635ed61/3f62bdf39635ed61.m3u8", "tags": ["Akashvani", "Marathi"]}, {"name": "Akashvani Ratnagiri", "link": "https://d1cvqgmbcpg5yn.cloudfront.net/615b82703c7e8a4c/615b82703c7e8a4c.m3u8", "tags": ["Akashvani", "Marathi"]}];
+        
+        const clusters = ["d1cvqgmbcpg5yn", "d3hrxqn1tritdh", "d1tmej9eu7kw5c", "dgnlfn5aus0c6", "dz1aqwz3bmbil", "airhlspush"];
+
+        let activeTagFilter = 'all';
+        let filterSearchText = '';
+        let currentHlsEngineInstance = null;
+        let globalActiveIndex = null;
+        let isPlayingState = false;
+
+        let favoritesList = JSON.parse(localStorage.getItem('radioFavorites')) || [];
+
+        const gridNode = document.getElementById('cardsLayoutGrid');
+        const searchNode = document.getElementById('globalSearch');
+        const audioEngineNode = document.getElementById('audioStreamingEngine');
+        const footerTitleNode = document.getElementById('footerTitle');
+        const footerSubtitleNode = document.getElementById('footerSubtitle');
+        const waveIconNode = document.getElementById('playingWaveIcon');
+        const bottomPlayPauseBtn = document.getElementById('bottomPlayPauseBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+
+        function buildInterfaceGrid() {
+            gridNode.innerHTML = '';
+            
+            const datasets = radioDatabase.filter(item => {
+                const isFav = favoritesList.includes(item.name);
+                
+                let filterMatch = false;
+                if (activeTagFilter === 'all') filterMatch = true;
+                else if (activeTagFilter === 'favorites') filterMatch = isFav;
+                else filterMatch = item.tags.includes(activeTagFilter);
+
+                const stringMatch = item.name.toLowerCase().includes(filterSearchText.toLowerCase()) || 
+                                    item.tags.some(tag => tag.toLowerCase().includes(filterSearchText.toLowerCase()));
+                return filterMatch && stringMatch;
+            });
+
+            if (datasets.length === 0) {
+                gridNode.innerHTML = `<div class="col-span-full py-16 text-center text-sm text-slate-500 font-medium">No stations found matching filters.</div>`;
+                return;
+            }
+
+            datasets.forEach((data) => {
+                const card = document.createElement('div');
+                const rawDbIndex = radioDatabase.findIndex(x => x.link === data.link && x.name === data.name);
+                const isFav = favoritesList.includes(data.name);
+                
+                card.className = `station-card border border-slate-800 bg-slate-900/40 p-4 rounded-xl flex items-center justify-between gap-4 transition-all relative`;
+                
+                if(globalActiveIndex === rawDbIndex) {
+                    card.classList.add('active-card');
+                }
+
+                let playBtnSymbol = '▶';
+                if (globalActiveIndex === rawDbIndex && isPlayingState) {
+                    playBtnSymbol = '⏸';
+                }
+
+                let chips = '';
+                data.tags.slice(0, 2).forEach(tag => {
+                    if(tag) chips += `<span class="bg-slate-950 border border-slate-800/60 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-mono">${tag}</span>`;
+                });
+
+                const imgMarkup = data.logo ? 
+                    `<img src="${data.logo}" class="w-10 h-10 rounded-lg object-cover bg-slate-950 border border-slate-800 shrink-0" alt="Logo">` : 
+                    `<div class="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-xl shrink-0">📻</div>`;
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden w-full">
+                        ${imgMarkup}
+                        <div class="overflow-hidden flex-1">
+                            <h3 class="font-bold text-sm text-slate-200 truncate">${data.name}</h3>
+                            <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button class="fav-btn p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-xs transition-all ${isFav ? 'text-rose-500 border-rose-500/20' : 'text-slate-500 hover:text-rose-400'}">
+                            ${isFav ? '❤️' : '🤍'}
+                        </button>
+                        <button class="play-btn text-xs bg-slate-950 p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/20 transition-all font-mono w-8 h-8 flex items-center justify-center">
+                            ${playBtnSymbol}
+                        </button>
+                    </div>
+                `;
+
+                card.querySelector('.play-btn').addEventListener('click', () => {
+                    if (globalActiveIndex === rawDbIndex) {
+                        if (isPlayingState) {
+                            audioEngineNode.pause();
+                        } else {
+                            audioEngineNode.play().then(() => triggerPlayStateUI()).catch(() => triggerErrorStateUI());
+                        }
+                    } else {
+                        bootStreamEngine(data, rawDbIndex);
+                    }
+                });
+
+                card.querySelector('.fav-btn').addEventListener('click', () => {
+                    toggleFavorite(data.name);
+                });
+
+                gridNode.appendChild(card);
+            });
+        }
+
+        function toggleFavorite(stationName) {
+            const idx = favoritesList.indexOf(stationName);
+            if (idx > -1) {
+                favoritesList.splice(idx, 1);
+            } else {
+                favoritesList.push(stationName);
+            }
+            localStorage.setItem('radioFavorites', JSON.stringify(favoritesList));
+            buildInterfaceGrid();
+        }
+
+        async function runMatrixResolution(url) {
+            if (!url.includes('cloudfront.net') && !url.includes('bitgravity.com')) return url;
+            footerSubtitleNode.textContent = "Checking primary matrix cluster...";
+            try {
+                const controller = new AbortController();
+                setTimeout(() => controller.abort(), 2000);
+                const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
+                if (res.status === 200) return url;
+            } catch(e) {}
+
+            footerSubtitleNode.textContent = "Resolving fallback servers...";
+            for (let chunk of clusters) {
+                let cleanUrl = url;
+                if(url.includes('cloudfront.net')) {
+                    cleanUrl = url.replace(/https:\/\/[^\/]+/, `https://${chunk}.cloudfront.net`);
+                } else if (url.includes('bitgravity.com')) {
+                    cleanUrl = url.replace(/https:\/\/[^\/]+/, `https://${chunk}.pc.cdn.bitgravity.com`);
+                }
+                try {
+                    const ctrl = new AbortController();
+                    setTimeout(() => ctrl.abort(), 1500);
+                    const test = await fetch(cleanUrl, { method: 'HEAD', signal: ctrl.signal });
+                    if (test.status === 200) return cleanUrl;
+                } catch(err) {}
+            }
+            return url;
+        }
+
+        async function bootStreamEngine(item, databaseIndex) {
+            globalActiveIndex = databaseIndex;
+            isPlayingState = false;
+            buildInterfaceGrid();
+
+            if (currentHlsEngineInstance) {
+                currentHlsEngineInstance.destroy();
+                currentHlsEngineInstance = null;
+            }
+            audioEngineNode.pause();
+            audioEngineNode.src = '';
+
+            footerTitleNode.textContent = item.name;
+            footerSubtitleNode.textContent = "Connecting to transmission link...";
+            waveIconNode.textContent = "⏳";
+            waveIconNode.className = "w-10 h-10 bg-slate-950 border border-emerald-500/20 rounded-lg flex items-center justify-center text-lg text-emerald-400 animate-pulse";
+
+            const targetStreamRoute = await runMatrixResolution(item.link);
+
+            if (targetStreamRoute.includes('.m3u8')) {
+                if (Hls.isSupported()) {
+                    currentHlsEngineInstance = new Hls({
+                        maxBufferSize: 0, maxBufferLength: 10, liveSyncDuration: 6, liveMaxLatencyDuration: 12
+                    });
+                    currentHlsEngineInstance.loadSource(targetStreamRoute);
+                    currentHlsEngineInstance.attachMedia(audioEngineNode);
+                    
+                    currentHlsEngineInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                        audioEngineNode.play().then(() => triggerPlayStateUI()).catch(() => triggerErrorStateUI());
+                    });
+                    currentHlsEngineInstance.on(Hls.Events.ERROR, (event, data) => {
+                        if (data.fatal) currentHlsEngineInstance.loadSource(item.link);
+                    });
+                } else if (audioEngineNode.canPlayType('application/vnd.apple.mpegurl')) {
+                    audioEngineNode.src = targetStreamRoute;
+                    audioEngineNode.play().then(() => triggerPlayStateUI()).catch(() => triggerErrorStateUI());
+                } else {
+                    footerSubtitleNode.textContent = "HLS stream execution failure.";
+                }
+            } else {
+                audioEngineNode.src = targetStreamRoute;
+                audioEngineNode.play().then(() => triggerPlayStateUI()).catch(() => triggerErrorStateUI());
+            }
+        }
+
+        function triggerPlayStateUI() {
+            isPlayingState = true;
+            footerSubtitleNode.textContent = "Playing Live Broadcast Channel";
+            waveIconNode.textContent = "🎵";
+            waveIconNode.className = "w-10 h-10 bg-emerald-950 border border-emerald-500/40 rounded-lg flex items-center justify-center text-lg text-emerald-400 animate-bounce";
+            bottomPlayPauseBtn.textContent = "⏸ Pause";
+            bottomPlayPauseBtn.className = "bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm px-4 py-1.5 rounded-lg transition-colors shadow-md";
+            syncCardPlayButtons();
+        }
+
+        function triggerPauseStateUI() {
+            isPlayingState = false;
+            footerSubtitleNode.textContent = "Broadcast Paused";
+            waveIconNode.textContent = "⏸";
+            waveIconNode.className = "w-10 h-10 bg-slate-900 border border-slate-700 rounded-lg flex items-center justify-center text-lg text-slate-400";
+            bottomPlayPauseBtn.textContent = "▶ Play";
+            bottomPlayPauseBtn.className = "bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-1.5 rounded-lg transition-colors shadow-md";
+            syncCardPlayButtons();
+        }
+
+        function triggerErrorStateUI() {
+            isPlayingState = false;
+            footerSubtitleNode.textContent = "Playback failed or stream offline.";
+            waveIconNode.textContent = "❌";
+            waveIconNode.className = "w-10 h-10 bg-red-950 border border-red-500/30 rounded-lg flex items-center justify-center text-lg text-red-400";
+            buildInterfaceGrid();
+        }
+
+        function syncCardPlayButtons() {
+            document.querySelectorAll('.station-card').forEach((card) => {
+                const playBtn = card.querySelector('.play-btn');
+                if (card.classList.contains('active-card') && playBtn) {
+                    playBtn.textContent = isPlayingState ? '⏸' : '▶';
+                } else if (playBtn) {
+                    playBtn.textContent = '▶';
+                }
+            });
+        }
+
+        bottomPlayPauseBtn.addEventListener('click', () => {
+            if (globalActiveIndex === null) return;
+            if (isPlayingState) {
+                audioEngineNode.pause();
+            } else {
+                audioEngineNode.play().then(() => triggerPlayStateUI()).catch(() => triggerErrorStateUI());
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            audioEngineNode.volume = e.target.value;
+        });
+
+        audioEngineNode.addEventListener('play', () => { if(!isPlayingState) triggerPlayStateUI(); });
+        audioEngineNode.addEventListener('pause', () => { if(isPlayingState) triggerPauseStateUI(); });
+
+        searchNode.addEventListener('input', (e) => {
+            filterSearchText = e.target.value;
+            buildInterfaceGrid();
+        });
+
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-tab').forEach(t => {
+                    t.className = "filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200";
+                });
+                
+                if (e.target.dataset.target === 'favorites') {
+                    e.target.className = "filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-rose-600 text-white shadow-md";
+                } else {
+                    e.target.className = "filter-tab px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all bg-emerald-600 text-white shadow-md";
+                }
+                
+                activeTagFilter = e.target.dataset.target;
+                buildInterfaceGrid();
+            });
+        });
+
+        buildInterfaceGrid();
+    </script>
+</body>
+</html>
