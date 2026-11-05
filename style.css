@@ -28,3 +28,51 @@
 .station-card .now-playing span {
     color: #34d399;
 }
+
+
+/* Roomier station cards and automatic scrolling for long live song titles */
+.station-card {
+    min-height: 112px;
+}
+.station-card .now-playing {
+    display: block;
+    width: 100%;
+    min-height: 24px;
+    line-height: 24px;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    border-radius: 5px;
+    padding: 0 2px;
+    background: rgba(2, 6, 23, 0.28);
+}
+.station-card .now-playing-track {
+    display: inline-flex;
+    align-items: center;
+    width: max-content;
+    min-width: 100%;
+    gap: 3rem;
+    will-change: transform;
+}
+.station-card .now-playing-copy {
+    display: inline-block;
+    flex: 0 0 auto;
+}
+.station-card .now-playing-copy::first-letter {
+    color: #34d399;
+}
+.station-card .now-playing.is-scrolling .now-playing-track {
+    animation: now-playing-marquee 14s linear infinite;
+}
+.station-card .now-playing.is-scrolling:hover .now-playing-track {
+    animation-play-state: paused;
+}
+@keyframes now-playing-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .station-card .now-playing.is-scrolling .now-playing-track {
+        animation: none;
+    }
+}

@@ -82,7 +82,7 @@
                         <div class="overflow-hidden flex-1">
                             <h3 class="font-bold text-sm text-slate-200 truncate">${data.name}</h3>
                             <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
-                            <div class="now-playing mt-2 text-[11px] text-slate-400 truncate" data-stream-url="${encodeURIComponent(data.link)}">
+                            <div class="now-playing mt-2 text-[11px] text-slate-400" data-stream-url="${encodeURIComponent(data.link)}">
                                 <span class="text-emerald-400">♪</span> Checking live song info…
                             </div>
                         </div>
@@ -168,15 +168,28 @@
 
         function renderNowPlaying(node, result) {
             if (!node.isConnected) return;
+            node.classList.remove('is-scrolling');
             if (result.title) {
-                const safeTitle = document.createElement('span');
-                safeTitle.textContent = result.title;
-                node.replaceChildren();
-                const icon = document.createElement('span');
-                icon.className = 'text-emerald-400';
-                icon.textContent = '♪ ';
-                node.append(icon, safeTitle);
+                const fullText = `♪ ${result.title}`;
+                const track = document.createElement('span');
+                track.className = 'now-playing-track';
+                const firstCopy = document.createElement('span');
+                firstCopy.className = 'now-playing-copy';
+                firstCopy.textContent = fullText;
+                const secondCopy = document.createElement('span');
+                secondCopy.className = 'now-playing-copy';
+                secondCopy.setAttribute('aria-hidden', 'true');
+                secondCopy.textContent = fullText;
+                track.append(firstCopy, secondCopy);
+                node.replaceChildren(track);
                 node.title = result.title;
+
+                // Scroll only when the complete title does not fit in the card.
+                requestAnimationFrame(() => {
+                    if (node.isConnected && firstCopy.scrollWidth > node.clientWidth) {
+                        node.classList.add('is-scrolling');
+                    }
+                });
             } else {
                 node.textContent = result.message || 'Song info unavailable';
                 node.title = node.textContent;
