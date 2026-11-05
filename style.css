@@ -17,3 +17,14 @@
             background-color: rgba(16, 185, 129, 0.08) !important;
             box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
         }
+
+
+/* Per-station live track metadata */
+.station-card .now-playing {
+    min-height: 16px;
+    line-height: 1.35;
+    color: #94a3b8;
+}
+.station-card .now-playing span {
+    color: #34d399;
+}

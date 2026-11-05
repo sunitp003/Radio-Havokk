@@ -82,6 +82,9 @@
                         <div class="overflow-hidden flex-1">
                             <h3 class="font-bold text-sm text-slate-200 truncate">${data.name}</h3>
                             <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
+                            <div class="now-playing mt-2 text-[11px] text-slate-400 truncate" data-stream-url="${encodeURIComponent(data.link)}">
+                                <span class="text-emerald-400">♪</span> Checking live song info…
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
@@ -111,8 +114,86 @@
                 });
 
                 gridNode.appendChild(card);
+                observeNowPlayingCard(card);
             });
         }
+
+        // Fetch track metadata only for cards currently visible on screen.
+        // This does not start the audio player or play any station.
+        const nowPlayingCache = new Map();
+        const metadataInFlight = new Set();
+        const nowPlayingObserver = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                const node = entry.target.querySelector('.now-playing');
+                if (node) loadNowPlaying(node);
+            });
+        }, { rootMargin: '120px 0px', threshold: 0.01 }) : null;
+
+        function observeNowPlayingCard(card) {
+            if (nowPlayingObserver) nowPlayingObserver.observe(card);
+            else {
+                const node = card.querySelector('.now-playing');
+                if (node) loadNowPlaying(node);
+            }
+        }
+
+        async function loadNowPlaying(node) {
+            const encodedUrl = node.dataset.streamUrl;
+            if (!encodedUrl) return;
+            const streamUrl = decodeURIComponent(encodedUrl);
+            const cached = nowPlayingCache.get(streamUrl);
+            if (cached && Date.now() - cached.checkedAt < 60000) {
+                renderNowPlaying(node, cached);
+                return;
+            }
+            if (metadataInFlight.has(streamUrl)) return;
+            metadataInFlight.add(streamUrl);
+            node.innerHTML = '<span class="text-emerald-400">♪</span> Checking live song info…';
+            try {
+                const response = await fetch(`/api/now-playing?url=${encodeURIComponent(streamUrl)}`, { cache: 'no-store' });
+                if (!response.ok) throw new Error('Metadata service unavailable');
+                const result = await response.json();
+                const value = { ...result, checkedAt: Date.now() };
+                nowPlayingCache.set(streamUrl, value);
+                renderNowPlaying(node, value);
+            } catch (error) {
+                const value = { title: '', message: 'Song info unavailable', checkedAt: Date.now() };
+                nowPlayingCache.set(streamUrl, value);
+                renderNowPlaying(node, value);
+            } finally {
+                metadataInFlight.delete(streamUrl);
+            }
+        }
+
+        function renderNowPlaying(node, result) {
+            if (!node.isConnected) return;
+            if (result.title) {
+                const safeTitle = document.createElement('span');
+                safeTitle.textContent = result.title;
+                node.replaceChildren();
+                const icon = document.createElement('span');
+                icon.className = 'text-emerald-400';
+                icon.textContent = '♪ ';
+                node.append(icon, safeTitle);
+                node.title = result.title;
+            } else {
+                node.textContent = result.message || 'Song info unavailable';
+                node.title = node.textContent;
+            }
+        }
+
+        // Refresh metadata periodically for visible cards; audio playback is never started here.
+        setInterval(() => {
+            document.querySelectorAll('.station-card .now-playing').forEach(node => {
+                const rect = node.getBoundingClientRect();
+                if (rect.bottom >= 0 && rect.top <= window.innerHeight) {
+                    const url = decodeURIComponent(node.dataset.streamUrl || '');
+                    nowPlayingCache.delete(url);
+                    loadNowPlaying(node);
+                }
+            });
+        }, 60000);
 
         function toggleFavorite(stationName) {
             const idx = favoritesList.indexOf(stationName);
