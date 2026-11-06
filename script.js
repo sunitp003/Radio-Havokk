@@ -642,7 +642,10 @@
         async function loadNowPlaying(node) {
             const encodedUrl = node.dataset.streamUrl;
             if (!encodedUrl) return;
-            const streamUrl = decodeURIComponent(encodedUrl);
+            const storedStreamUrl = decodeURIComponent(encodedUrl);
+            const streamUrl = storedStreamUrl === "https://stream.tamilfmradios.com/?url=http://198.245.61.103:8113/stream?type=http&nocache=2"
+                ? "http://198.245.61.103:8113/stream?type=http&nocache=2"
+                : storedStreamUrl;
             const cached = nowPlayingCache.get(streamUrl);
             if (cached && Date.now() - cached.checkedAt < 60000) {
                 renderNowPlaying(node, cached);
@@ -765,7 +768,9 @@
 
             const targetStreamRoute = item.link === "http://s5.voscast.com:8216/stream"
                 ? "/api/stream"
-                : await runMatrixResolution(item.link);
+                : item.link === "https://stream.tamilfmradios.com/?url=http://198.245.61.103:8113/stream?type=http&nocache=2"
+                    ? "/api/smile-fm"
+                    : await runMatrixResolution(item.link);
 
             if (targetStreamRoute.includes('.m3u8')) {
                 if (Hls.isSupported()) {
