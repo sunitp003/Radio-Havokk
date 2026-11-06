@@ -95,7 +95,7 @@
     { "name": "Radio Retro Bollywood 90s", "link": "https://stream.zeno.fm/u0hrd3xkzhhvv", "tags": ["Hindi", "Bollywood", "90s"] }, 
     { "name": "Club Mirchi", "link": "https://stream-141.zeno.fm/6n6ewddtad0uv", "tags": ["Hindi", "Bollywood", "90s"] }, 
     { "name": "Mohabbat Radio", "link": "https://stream.zeno.fm/t2ekq8zsgtzuv", "tags": ["Hindi", "Bollywood", "90s"] }, 
-    { "name": "Hindi Non Stop", "link": "http://s5.voscast.com:8216/stream", "tags": ["Hindi", "Bollywood", "Retro", "90s"] }, 
+    { "name": "Non Stop Hindi", "link": "http://s5.voscast.com:8216/stream", "tags": ["Hindi", "Bollywood", "Retro", "90s"] }, 
     { "name": "Radio Gaana", "link": "https://sp14.instainternet.com/8044/stream", "tags": ["Hindi", "Bollywood", "Retro"] }, 
     { "name": "Radio Namkin Live", "link": "https://stream-19.zeno.fm/84h7fsbaqv5tv?zs=5fWIjd5dTEWImmlwdIadqA", "tags": ["Hindi", "Bollywood", "Retro", "90s", "00s", "Modern"] }, 
     { "name": "Radio Nasha", "link": "https://stream-289.surfernetwork.com/zu59ykebs2zuv", "tags": ["Hindi", "Bollywood", "Retro", "90s", "00s", "Modern"] }, 
