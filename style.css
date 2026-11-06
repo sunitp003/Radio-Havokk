@@ -211,9 +211,9 @@ header {
 .station-card .now-playing {
   background: rgba(8, 12, 32, .58);
   border: 1px solid rgba(129, 140, 248, .10);
-  color: #a5b4fc;
+  color: #00fffb;
 }
-.station-card .now-playing span { color: #a5b4fc; }
+.station-card .now-playing span { color: #00fffb; }
 .eq-overlay {
   background: rgba(5, 8, 24, .82);
   backdrop-filter: blur(22px);
