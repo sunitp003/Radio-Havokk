@@ -82,7 +82,7 @@ input[type=range]::-webkit-slider-thumb:hover {
 }
 
 .station-card .now-playing span {
-    color: #34d399; 
+    color: #00fffb; 
 }
 
 /* Marquee Scrolling Logic */
