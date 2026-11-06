@@ -184,6 +184,66 @@
 ];
         const clusters = ["d1cvqgmbcpg5yn", "d3hrxqn1tritdh", "d1tmej9eu7kw5c", "dgnlfn5aus0c6", "dz1aqwz3bmbil", "airhlspush"];
 
+        // ===== Adaptive performance profiles =====
+        const performanceModeSelect = document.getElementById('performanceModeSelect');
+        const PERFORMANCE_MODES = ['auto', 'low', 'balanced', 'high'];
+        function detectPerformanceMode() {
+            const memory = Number(navigator.deviceMemory || 0);
+            const cores = Number(navigator.hardwareConcurrency || 0);
+            if ((memory && memory <= 2) || (cores && cores <= 2)) return 'low';
+            if ((memory >= 6 && cores >= 6) || memory >= 8) return 'high';
+            return 'balanced';
+        }
+        function resolvePerformanceMode(mode) { return mode === 'auto' ? detectPerformanceMode() : mode; }
+        let requestedPerformanceMode = (() => {
+            try {
+                const saved = localStorage.getItem('radioHavokkPerformanceMode');
+                return PERFORMANCE_MODES.includes(saved) ? saved : 'auto';
+            } catch (_) { return 'auto'; }
+        })();
+        let performanceMode = resolvePerformanceMode(requestedPerformanceMode);
+        function applyPerformanceMode() {
+            performanceMode = resolvePerformanceMode(requestedPerformanceMode);
+            document.documentElement.dataset.performanceMode = performanceMode;
+            if (performanceModeSelect) {
+                performanceModeSelect.value = requestedPerformanceMode;
+                performanceModeSelect.title = requestedPerformanceMode === 'auto'
+                    ? 'Auto: detected ' + performanceMode + ' profile'
+                    : 'Performance profile: ' + performanceMode;
+            }
+        }
+        if (performanceModeSelect) performanceModeSelect.addEventListener('change', () => {
+            requestedPerformanceMode = PERFORMANCE_MODES.includes(performanceModeSelect.value) ? performanceModeSelect.value : 'auto';
+            try { localStorage.setItem('radioHavokkPerformanceMode', requestedPerformanceMode); } catch (_) {}
+            applyPerformanceMode();
+        });
+        applyPerformanceMode();
+
+        // ===== Chrome / Android lock-screen media controls =====
+        function updateMediaSessionStation(item) {
+            if (!('mediaSession' in navigator) || !item) return;
+            try {
+                if ('MediaMetadata' in window) navigator.mediaSession.metadata = new MediaMetadata({
+                    title: item.name, artist: 'Live Radio', album: 'Radio Havokk',
+                    artwork: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }]
+                });
+                navigator.mediaSession.playbackState = isPlayingState ? 'playing' : 'paused';
+            } catch (error) { console.debug('Media Session metadata unavailable:', error); }
+        }
+        function setupMediaSessionActions() {
+            if (!('mediaSession' in navigator)) return;
+            const handlers = {
+                play: () => { if (globalActiveIndex !== null && audioEngineNode.paused) audioEngineNode.play().then(triggerPlayStateUI).catch(triggerErrorStateUI); },
+                pause: () => audioEngineNode.pause(),
+                stop: () => audioEngineNode.pause(),
+                nexttrack: () => { if (globalActiveIndex !== null) { const i = (globalActiveIndex + 1) % radioDatabase.length; bootStreamEngine(radioDatabase[i], i); } },
+                previoustrack: () => { if (globalActiveIndex !== null) { const i = (globalActiveIndex - 1 + radioDatabase.length) % radioDatabase.length; bootStreamEngine(radioDatabase[i], i); } }
+            };
+            Object.entries(handlers).forEach(([action, handler]) => { try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {} });
+        }
+        setupMediaSessionActions();
+
+
         let activeTagFilter = 'all';
         let filterSearchText = '';
         let currentHlsEngineInstance = null;
@@ -235,7 +295,11 @@
         let crossGainL = null, crossGainR = null, directGainL = null, directGainR = null;
         let convolver = null, reverbWet = null, reverbDry = null;
         let compressorNode = null, masterGainNode = null, stereoPannerNode = null;
-        let eqEnabled = false;
+        let eqEnabled = localStorage.getItem('radioHavokkEQEnabled') === 'true';
+        let eqBypassGain = null, eqEffectsGain = null;
+        let eqProcessingConnected = false;
+        const eqMasterToggleBtn = document.getElementById('eqMasterToggleBtn');
+        const eqMasterToggleText = document.getElementById('eqMasterToggleText');
         const eqToggleBtn = document.getElementById('eqToggleBtn');
         const eqStatusText = document.getElementById('eqStatusText');
         const eqPanel = document.getElementById('eqPanel');
@@ -289,7 +353,8 @@
         }
 
         function makeReverbImpulse(ctx) {
-            const length = Math.floor(ctx.sampleRate * 2.4);
+            const reverbSeconds = performanceMode === 'low' ? 0.8 : performanceMode === 'balanced' ? 1.5 : 2.4;
+            const length = Math.floor(ctx.sampleRate * reverbSeconds);
             const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
             for (let channel = 0; channel < 2; channel++) {
                 const data = impulse.getChannelData(channel);
@@ -305,6 +370,11 @@
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 sourceNode = audioCtx.createMediaElementSource(audioEngineNode);
+                // Keep a direct, bit-clean route available for master EQ bypass.
+                eqBypassGain = audioCtx.createGain();
+                eqEffectsGain = audioCtx.createGain();
+                sourceNode.connect(eqBypassGain);
+                eqBypassGain.connect(audioCtx.destination);
                 preampNode = audioCtx.createGain();
                 eqFilters = EQ_BANDS.map((band, index) => {
                     const filter = audioCtx.createBiquadFilter();
@@ -324,6 +394,7 @@
                 trebleFilter.gain.value = eqState.treble;
 
                 sourceNode.connect(preampNode);
+                eqProcessingConnected = true;
                 eqFilters.reduce((previous, current) => {
                     previous.connect(current);
                     return current;
@@ -364,7 +435,8 @@
                 reverbWet.connect(compressorNode);
                 compressorNode.connect(masterGainNode);
                 masterGainNode.connect(stereoPannerNode);
-                stereoPannerNode.connect(audioCtx.destination);
+                stereoPannerNode.connect(eqEffectsGain);
+                eqEffectsGain.connect(audioCtx.destination);
                 applyEQSettings();
                 return true;
             } catch (error) {
@@ -377,6 +449,14 @@
         function applyEQSettings() {
             saveEQState();
             if (!audioCtx) return;
+            // Disconnect the heavy processing graph entirely while bypassed to save CPU.
+            if (eqEnabled && !eqProcessingConnected) {
+                sourceNode.connect(preampNode);
+                eqProcessingConnected = true;
+            } else if (!eqEnabled && eqProcessingConnected) {
+                sourceNode.disconnect(preampNode);
+                eqProcessingConnected = false;
+            }
             eqFilters.forEach((filter, i) => filter.gain.setTargetAtTime(eqState.bands[i], audioCtx.currentTime, 0.025));
             preampNode.gain.setTargetAtTime(Math.pow(10, eqState.preamp / 20), audioCtx.currentTime, 0.025);
             bassFilter.gain.setTargetAtTime(eqState.bass, audioCtx.currentTime, 0.025);
@@ -399,6 +479,34 @@
             const wet = eqState.ambience / 100 * 0.45;
             reverbWet.gain.setTargetAtTime(wet, audioCtx.currentTime, 0.04);
             reverbDry.gain.setTargetAtTime(1 - wet * 0.35, audioCtx.currentTime, 0.04);
+            // Crossfade the complete processing chain against the untouched source.
+            // All EQ values remain stored while bypassed and return unchanged on re-enable.
+            eqBypassGain.gain.setTargetAtTime(eqEnabled ? 0 : 1, audioCtx.currentTime, 0.035);
+            eqEffectsGain.gain.setTargetAtTime(eqEnabled ? 1 : 0, audioCtx.currentTime, 0.035);
+        }
+
+        function syncEQMasterButton() {
+            if (!eqMasterToggleBtn) return;
+            eqMasterToggleBtn.classList.toggle('is-on', eqEnabled);
+            eqMasterToggleBtn.setAttribute('aria-pressed', String(eqEnabled));
+            eqMasterToggleText.textContent = eqEnabled ? 'EQ ON' : 'EQ OFF';
+            eqStatusText.textContent = eqEnabled ? 'EQ On' : 'EQ Off';
+        }
+
+        function toggleEQMaster() {
+            eqEnabled = !eqEnabled;
+            try { localStorage.setItem('radioHavokkEQEnabled', String(eqEnabled)); } catch (_) {}
+            syncEQMasterButton();
+            if (globalActiveIndex !== null) {
+                const ready = initAudioEQ();
+                if (ready) {
+                    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+                    applyEQSettings();
+                    eqEngineStatus.textContent = eqEnabled ? 'All equalizer effects are ON' : 'Clean original audio • Equalizer bypassed';
+                }
+            } else {
+                eqEngineStatus.textContent = eqEnabled ? 'EQ enabled • Select a station to apply' : 'EQ off • Clean original audio';
+            }
         }
 
         function syncEQUI() {
@@ -453,15 +561,17 @@
 
         buildEQControls();
         syncEQUI();
+        syncEQMasterButton();
         saveEQState();
         eqToggleBtn.addEventListener('click', () => {
             openEQPanel();
             if (globalActiveIndex !== null) {
                 const ok = initAudioEQ();
                 if (ok && audioCtx.state === 'suspended') audioCtx.resume();
-                eqEngineStatus.textContent = ok ? 'Effects are active on the current stream' : 'Effects could not be initialized';
+                eqEngineStatus.textContent = ok ? (eqEnabled ? 'All equalizer effects are ON' : 'Clean original audio • Equalizer bypassed') : 'Effects could not be initialized';
             }
         });
+        eqMasterToggleBtn.addEventListener('click', toggleEQMaster);
         document.getElementById('eqCloseBtn').addEventListener('click', closeEQPanel);
         eqPanel.addEventListener('click', event => { if (event.target === eqPanel) closeEQPanel(); });
         document.addEventListener('keydown', event => { if (event.key === 'Escape') closeEQPanel(); });
@@ -625,7 +735,7 @@
         const metadataInFlight = new Set();
         const nowPlayingObserver = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (!entry.isIntersecting) return;
+                if (!entry.isIntersecting || document.hidden) return;
                 const node = entry.target.querySelector('.now-playing');
                 if (node) loadNowPlaying(node);
             });
@@ -702,6 +812,7 @@
         }
 
         setInterval(() => {
+            if (document.hidden) return; // Keep background work quiet; audio playback remains untouched.
             document.querySelectorAll('.station-card .now-playing').forEach(node => {
                 const rect = node.getBoundingClientRect();
                 if (rect.bottom >= 0 && rect.top <= window.innerHeight) {
@@ -746,6 +857,7 @@
         }
 
         async function bootStreamEngine(item, databaseIndex) {
+            updateMediaSessionStation(item);
             if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             globalActiveIndex = databaseIndex;
             isPlayingState = false;
@@ -774,14 +886,40 @@
 
             if (targetStreamRoute.includes('.m3u8')) {
                 if (Hls.isSupported()) {
-                    currentHlsEngineInstance = new Hls({ maxBufferSize: 0, maxBufferLength: 10, liveSyncDuration: 6, liveMaxLatencyDuration: 12 });
-                    currentHlsEngineInstance.loadSource(targetStreamRoute);
-                    currentHlsEngineInstance.attachMedia(audioEngineNode);
-                    currentHlsEngineInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-                        audioEngineNode.play().then(() => triggerPlayStateUI()).catch(() => triggerErrorStateUI());
+                    const profile = {
+                        low: { maxBufferLength: 6, maxMaxBufferLength: 10, maxBufferSize: 8 * 1024 * 1024, backBufferLength: 12 },
+                        balanced: { maxBufferLength: 10, maxMaxBufferLength: 16, maxBufferSize: 16 * 1024 * 1024, backBufferLength: 24 },
+                        high: { maxBufferLength: 14, maxMaxBufferLength: 22, maxBufferSize: 24 * 1024 * 1024, backBufferLength: 36 }
+                    }[performanceMode] || { maxBufferLength: 10, maxMaxBufferLength: 16, maxBufferSize: 16 * 1024 * 1024, backBufferLength: 24 };
+                    const hls = new Hls({
+                        enableWorker: performanceMode !== 'low', lowLatencyMode: false,
+                        maxBufferLength: profile.maxBufferLength, maxMaxBufferLength: profile.maxMaxBufferLength,
+                        maxBufferSize: profile.maxBufferSize, backBufferLength: profile.backBufferLength,
+                        liveSyncDuration: 6, liveMaxLatencyDuration: 12,
+                        manifestLoadingTimeOut: 15000, fragLoadingTimeOut: 20000
                     });
-                    currentHlsEngineInstance.on(Hls.Events.ERROR, (event, data) => {
-                        if (data.fatal) currentHlsEngineInstance.loadSource(item.link);
+                    currentHlsEngineInstance = hls;
+                    let networkRetries = 0, mediaRecoveries = 0;
+                    hls.loadSource(targetStreamRoute);
+                    hls.attachMedia(audioEngineNode);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => audioEngineNode.play().then(triggerPlayStateUI).catch(triggerErrorStateUI));
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        if (!data.fatal || currentHlsEngineInstance !== hls) return;
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRetries < 4) {
+                            networkRetries += 1;
+                            const delay = Math.min(1000 * (2 ** (networkRetries - 1)), 8000);
+                            footerSubtitleNode.textContent = 'Connection interrupted • retrying...';
+                            window.setTimeout(() => { if (currentHlsEngineInstance === hls) hls.startLoad(); }, delay);
+                        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries < 2) {
+                            mediaRecoveries += 1;
+                            footerSubtitleNode.textContent = 'Recovering audio decoder...';
+                            try { hls.recoverMediaError(); } catch (_) { triggerErrorStateUI(); }
+                        } else {
+                            footerSubtitleNode.textContent = 'Stream connection failed. Try this station again.';
+                            hls.destroy();
+                            if (currentHlsEngineInstance === hls) currentHlsEngineInstance = null;
+                            triggerErrorStateUI();
+                        }
                     });
                 } else if (audioEngineNode.canPlayType('application/vnd.apple.mpegurl')) {
                     audioEngineNode.src = targetStreamRoute;
@@ -797,6 +935,8 @@
 
         function triggerPlayStateUI() {
             isPlayingState = true;
+            if (globalActiveIndex !== null) updateMediaSessionStation(radioDatabase[globalActiveIndex]);
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
             footerSubtitleNode.textContent = "Playing Live Broadcast";
             
             waveIconNode.innerHTML = `<i data-lucide="radio-tower" class="w-6 h-6"></i>`;
@@ -821,6 +961,7 @@
 
         function triggerPauseStateUI() {
             isPlayingState = false;
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
             footerSubtitleNode.textContent = "Broadcast Paused";
             
             waveIconNode.innerHTML = `<i data-lucide="music" class="w-4 h-4 sm:w-5 sm:h-5"></i>`;
@@ -882,8 +1023,30 @@
         mobilePlayPauseBtn.addEventListener('click', toggleGlobalPlayPause);
 
         volumeSlider.addEventListener('input', (e) => audioEngineNode.volume = e.target.value);
-        audioEngineNode.addEventListener('play', () => { if (!isPlayingState) triggerPlayStateUI(); });
+        audioEngineNode.addEventListener('play', () => {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+            if (!isPlayingState) triggerPlayStateUI();
+        });
         audioEngineNode.addEventListener('pause', () => { if (isPlayingState) triggerPauseStateUI(); });
+        audioEngineNode.addEventListener('waiting', () => { if (isPlayingState) footerSubtitleNode.textContent = 'Buffering live broadcast...'; });
+        audioEngineNode.addEventListener('stalled', () => { if (isPlayingState) footerSubtitleNode.textContent = 'Stream stalled • waiting for connection...'; });
+        audioEngineNode.addEventListener('playing', () => { if (!isPlayingState) triggerPlayStateUI(); });
+        audioEngineNode.addEventListener('error', () => { if (globalActiveIndex !== null) triggerErrorStateUI(); });
+
+        // Do not pause or recreate the media element when Chrome is minimized.
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                if (audioCtx && isPlayingState && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+                document.querySelectorAll('.station-card .now-playing').forEach(node => {
+                    const url = decodeURIComponent(node.dataset.streamUrl || '');
+                    const cached = nowPlayingCache.get(url);
+                    if (!cached || Date.now() - cached.checkedAt >= 60000) loadNowPlaying(node);
+                });
+            }
+        });
+        window.addEventListener('pageshow', () => {
+            if (audioCtx && isPlayingState && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        });
 
         searchNode.addEventListener('input', (e) => {
             filterSearchText = e.target.value;

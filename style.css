@@ -290,3 +290,23 @@ input[type=range]::-webkit-slider-thumb {
   .eq-band input { width: 22px; height: 112px; }
   .eq-band-frequency { font-size: 10px; }
 }
+
+
+/* Adaptive device profiles: retain the premium interface while reducing expensive paint work. */
+.performance-control{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid rgba(167,139,250,.25);border-radius:999px;background:rgba(99,102,241,.10);color:#c4b5fd;font-size:10px;font-weight:700;white-space:nowrap}
+.performance-control select{max-width:78px;border:0;outline:0;color:#e0e7ff;background:transparent;font:inherit;cursor:pointer}
+.performance-control option{color:#111827;background:#fff}
+html[data-performance-mode="low"] .station-card,html[data-performance-mode="low"] header,html[data-performance-mode="low"] .eq-overlay,html[data-performance-mode="low"] .fixed.backdrop-blur-2xl{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html[data-performance-mode="low"] .station-card,html[data-performance-mode="low"] .station-card:hover{transition:border-color .15s ease,background-color .15s ease!important;transform:none!important}
+html[data-performance-mode="low"] .station-card .now-playing.is-scrolling .now-playing-track{animation-duration:22s}
+html[data-performance-mode="balanced"] .station-card:hover{transform:translateY(-1px)}
+@media(max-width:520px){.performance-control{gap:4px;padding:5px 7px}.performance-control span{display:none}}
+
+
+/* EQ master bypass control: switches the complete effects chain without changing saved settings. */
+.eq-header-actions{display:flex;align-items:center;gap:10px}
+.eq-master-toggle{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid rgba(148,163,184,.3);border-radius:999px;background:rgba(148,163,184,.10);color:#cbd5e1;font-size:11px;font-weight:900;letter-spacing:.06em;white-space:nowrap;transition:background .18s,border-color .18s,color .18s}
+.eq-master-indicator{width:8px;height:8px;border-radius:50%;background:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.12)}
+.eq-master-toggle.is-on{color:#fff;border-color:rgba(52,211,153,.55);background:linear-gradient(100deg,rgba(5,150,105,.34),rgba(79,70,229,.28));box-shadow:0 0 20px rgba(52,211,153,.14)}
+.eq-master-toggle.is-on .eq-master-indicator{background:#34d399;box-shadow:0 0 12px rgba(52,211,153,.8)}
+@media(max-width:520px){.eq-header-actions{gap:7px}.eq-master-toggle{padding:8px 10px;font-size:10px}}
