@@ -35,7 +35,7 @@ module.exports = function handler(req, res) {
 
   // Forward valid byte ranges so browser media seeking/reconnection can work.
   const range = req.headers.range;
-  if (typeof range === 'string' && /^bytes=\\d*-\\d*(,\\d*-\\d*)*$/.test(range)) {
+  if (typeof range === 'string' && /^bytes=\d*-\d*(,\d*-\d*)*$/.test(range)) {
     headers.Range = range;
   }
 
