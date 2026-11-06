@@ -6,6 +6,10 @@
       "dest": "/api/now-playing.js"
     },
     {
+      "src": "/api/stream",
+      "dest": "/api/stream.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }
