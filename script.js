@@ -763,7 +763,9 @@
             waveIconNode.className = "w-12 h-12 bg-emerald-900/30 border border-emerald-500/30 rounded-xl flex items-center justify-center text-emerald-400";
             if(window.lucide) lucide.createIcons({ root: waveIconNode });
 
-            const targetStreamRoute = await runMatrixResolution(item.link);
+            const targetStreamRoute = item.link === "http://s5.voscast.com:8216/stream"
+                ? "/api/stream"
+                : await runMatrixResolution(item.link);
 
             if (targetStreamRoute.includes('.m3u8')) {
                 if (Hls.isSupported()) {
