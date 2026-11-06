@@ -55,6 +55,7 @@ const ALLOWED_HOSTS = new Set([
   "stream.radiojar.com",
   "stream.rcs.revma.com",
   "stream.tamilfmradios.com",
+  "198.245.61.103",
   "stream.zeno.fm",
   "stream.zenolive.com",
   "streamasiacdn.atc-labs.com",
